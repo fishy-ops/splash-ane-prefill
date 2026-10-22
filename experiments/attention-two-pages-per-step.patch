@@ -1,0 +1,301 @@
+diff --git a/runtime/metal/kernels/common/paged_attention_tile.h b/runtime/metal/kernels/common/paged_attention_tile.h
+index 33e36f58..9636c5bb 100644
+--- a/runtime/metal/kernels/common/paged_attention_tile.h
++++ b/runtime/metal/kernels/common/paged_attention_tile.h
+@@ -66,30 +66,42 @@ inline uint splash_attention_pages_per_split(uint pages, uint splits) {
+   return (pages + splits - 1) / splits;
+ }
+ 
+-// One Page32 block of one tile: key-scaled scores become value-scaled bf16
+-// probabilities and the row statistics advance. Four lanes own one fused row,
+-// eight consecutive tokens each, so the row maximum and sum are two xor
+-// shuffles instead of a 32-lane reduction per row and the eight bf16
+-// probabilities leave as one 16-byte store. Threads past 4 x FusedRows
+-// (kv4_g6: simdgroups 6 and 7) only take part in the caller's barriers.
++// The Page32 blocks one iteration of the tile loop covers. A block past the
++// split's last page repeats that page's addresses with a first token every
++// row masks, so it adds nothing.
++template <typename CacheElement, uint Pages> struct SplashAttentionStep {
++  device CacheElement *values[Pages];
++  device const float4 *key_scales[Pages];
++  device const float4 *value_scales[Pages];
++  uint token_start[Pages];
++};
++
++// One step's Page32 blocks of one tile: key-scaled scores become value-scaled
++// bf16 probabilities and the row statistics advance once for all of them.
++// Four lanes own one fused row, eight consecutive tokens of each block, so the
++// row maximum and sum are two xor shuffles instead of a 32-lane reduction per
++// row and each block's eight bf16 probabilities leave as one 16-byte store.
++// Threads past 4 x FusedRows (kv4_g6: simdgroups 6 and 7) only take part in
++// the caller's barriers.
+ // The float4 loads need 16-byte aligned slabs (alignas in the entries) and
+-// the page's 32 key and value scales as float4 vectors, in device memory
++// each page's 32 key and value scales as float4 vectors, in device memory
+ // (splash_q8_scale_index is a multiple of 32 floats and every region of an
+ // extent starts 64 KiB-aligned).
+ // Rows whose running maximum grew atomically set the shared boolean rescale
+ // flag. Existing threadgroup barriers separate reset, concurrent set, and
+ // read; relaxed atomics make the same-value writes safe without changing
+ // arithmetic.
+-template <uint QueryHeadsPerKVHead, uint RowsPerTile, bool Quantized>
++template <uint QueryHeadsPerKVHead, uint RowsPerTile, bool Quantized,
++          typename CacheElement, uint Pages>
+ inline void splash_attention_page_softmax(
+     threadgroup const float *scores, threadgroup bfloat *probabilities,
+     threadgroup float *row_max, threadgroup float *row_sum,
+     threadgroup float *previous_scale, threadgroup atomic_uint *rescale,
+-    device const float4 *key_scales, device const float4 *value_scales,
+-    uint token_start,
++    thread const SplashAttentionStep<CacheElement, Pages> &step,
+     uint visible_tokens, uint committed_tokens, uint active_rows,
+     uint thread_index) {
+   constexpr uint N = SplashKvPageTokens;
++  constexpr uint Width = N * Pages;
+   constexpr uint FusedRows = RowsPerTile * QueryHeadsPerKVHead;
+   constexpr uint TokensPerLane = 8;
+   constexpr uint LanesPerRow = N / TokensPerLane;
+@@ -104,39 +116,45 @@ inline void splash_attention_page_softmax(
+   const uint causal_end =
+       committed_tokens + min(query_row, active_rows - 1) + 1;
+   const uint limit = min(visible_tokens, causal_end);
+-  const uint token = token_start + column;
+-  threadgroup const float4 *scores4 =
+-      reinterpret_cast<threadgroup const float4 *>(scores + fused_row * N +
+-                                                   column);
+   const uint vector = column / 4;
+-  float score[TokensPerLane];
+-  {
++  float score[Pages][TokensPerLane];
++  float local_max = -INFINITY;
++#pragma unroll
++  for (uint p = 0; p < Pages; ++p) {
++    threadgroup const float4 *scores4 =
++        reinterpret_cast<threadgroup const float4 *>(
++            scores + fused_row * Width + p * N + column);
+     float4 low = scores4[0], high = scores4[1];
+     if constexpr (Quantized) {
+-      low *= key_scales[vector];
+-      high *= key_scales[vector + 1];
++      low *= step.key_scales[p][vector];
++      high *= step.key_scales[p][vector + 1];
+     }
+     low *= 0.0625f;
+     high *= 0.0625f;
+-    score[0] = low.x, score[1] = low.y, score[2] = low.z, score[3] = low.w;
+-    score[4] = high.x, score[5] = high.y, score[6] = high.z, score[7] = high.w;
+-  }
+-  float local_max = -INFINITY;
++    score[p][0] = low.x, score[p][1] = low.y, score[p][2] = low.z, score[p][3] = low.w;
++    score[p][4] = high.x, score[p][5] = high.y, score[p][6] = high.z, score[p][7] = high.w;
++    const uint token = step.token_start[p] + column;
+ #pragma unroll
+-  for (uint j = 0; j < TokensPerLane; ++j) {
+-    score[j] = token + j < limit ? score[j] : -INFINITY;
+-    local_max = max(local_max, score[j]);
++    for (uint j = 0; j < TokensPerLane; ++j) {
++      score[p][j] = token + j < limit ? score[p][j] : -INFINITY;
++      local_max = max(local_max, score[p][j]);
++    }
+   }
+   local_max = max(local_max, simd_shuffle_xor(local_max, 1));
+   local_max = max(local_max, simd_shuffle_xor(local_max, 2));
+   const float previous_max = row_max[fused_row];
+   const float next_max = max(previous_max, local_max);
+-  float probability[TokensPerLane];
++  float probability[Pages][TokensPerLane];
+   float local_sum = 0.0f;
+ #pragma unroll
+-  for (uint j = 0; j < TokensPerLane; ++j) {
+-    probability[j] = token + j < limit ? fast::exp(score[j] - next_max) : 0.0f;
+-    local_sum += probability[j];
++  for (uint p = 0; p < Pages; ++p) {
++    const uint token = step.token_start[p] + column;
++#pragma unroll
++    for (uint j = 0; j < TokensPerLane; ++j) {
++      probability[p][j] =
++          token + j < limit ? fast::exp(score[p][j] - next_max) : 0.0f;
++      local_sum += probability[p][j];
++    }
+   }
+   local_sum += simd_shuffle_xor(local_sum, 1);
+   local_sum += simd_shuffle_xor(local_sum, 2);
+@@ -151,23 +169,28 @@ inline void splash_attention_page_softmax(
+       atomic_store_explicit(rescale, 1u, memory_order_relaxed);
+   }
+   // Masked tokens stay exactly zero whatever their stored value scale holds.
+-  float4 low_scales(1.0f), high_scales(1.0f);
+-  if constexpr (Quantized) {
+-    low_scales = value_scales[vector];
+-    high_scales = value_scales[vector + 1];
++#pragma unroll
++  for (uint p = 0; p < Pages; ++p) {
++    const uint token = step.token_start[p] + column;
++    float4 low_scales(1.0f), high_scales(1.0f);
++    if constexpr (Quantized) {
++      low_scales = step.value_scales[p][vector];
++      high_scales = step.value_scales[p][vector + 1];
++    }
++    thread const float *row = probability[p];
++    const float4 low(token + 0 < limit ? row[0] * low_scales.x : 0.0f,
++                     token + 1 < limit ? row[1] * low_scales.y : 0.0f,
++                     token + 2 < limit ? row[2] * low_scales.z : 0.0f,
++                     token + 3 < limit ? row[3] * low_scales.w : 0.0f);
++    const float4 high(token + 4 < limit ? row[4] * high_scales.x : 0.0f,
++                      token + 5 < limit ? row[5] * high_scales.y : 0.0f,
++                      token + 6 < limit ? row[6] * high_scales.z : 0.0f,
++                      token + 7 < limit ? row[7] * high_scales.w : 0.0f);
++    threadgroup bfloat4 *probabilities4 = reinterpret_cast<threadgroup bfloat4 *>(
++        probabilities + fused_row * Width + p * N + column);
++    probabilities4[0] = bfloat4(low);
++    probabilities4[1] = bfloat4(high);
+   }
+-  const float4 low(token + 0 < limit ? probability[0] * low_scales.x : 0.0f,
+-                   token + 1 < limit ? probability[1] * low_scales.y : 0.0f,
+-                   token + 2 < limit ? probability[2] * low_scales.z : 0.0f,
+-                   token + 3 < limit ? probability[3] * low_scales.w : 0.0f);
+-  const float4 high(token + 4 < limit ? probability[4] * high_scales.x : 0.0f,
+-                    token + 5 < limit ? probability[5] * high_scales.y : 0.0f,
+-                    token + 6 < limit ? probability[6] * high_scales.z : 0.0f,
+-                    token + 7 < limit ? probability[7] * high_scales.w : 0.0f);
+-  threadgroup bfloat4 *probabilities4 = reinterpret_cast<threadgroup bfloat4 *>(
+-      probabilities + fused_row * N + column);
+-  probabilities4[0] = bfloat4(low);
+-  probabilities4[1] = bfloat4(high);
+ }
+ 
+ // One tile over its split's pages, whose K/V (INT8 with their scales, or
+@@ -177,10 +200,12 @@ inline void splash_attention_page_softmax(
+ // [kv head][row][query head in group][dimension], so the tile's fused rows
+ // form one contiguous M x D tensor. Each page is reached through its table
+ // entry (kv_extent.h).
+-// Three barriers per page order the score store, the softmax and the
+-// probability reads of PV.
++// Each iteration covers PagesPerStep pages, whose scores fill a
++// [fused row][PagesPerStep x 32] scratch. Three barriers per iteration order
++// the score stores, the softmax and the probability reads of PV, so more
++// pages per step amortize them, and the rescale, over more keys.
+ template <uint KVHeads, uint QueryHeadsPerKVHead, uint RowsPerTile,
+-          typename CacheElement>
++          typename CacheElement, uint PagesPerStep = 1>
+ inline void splash_paged_attention_tile(
+     device bfloat *tile_queries, device const SplashKvPage *page_table,
+     SplashKvLayer kv, uint kv_head, uint committed_tokens, uint active_rows, uint splits,
+@@ -193,6 +218,7 @@ inline void splash_paged_attention_tile(
+   constexpr bool Quantized = is_same<CacheElement, int8_t>::value;
+   constexpr ushort N = SplashKvPageTokens;
+   constexpr ushort D = SplashKvHeadDimension;
++  constexpr ushort W = N * PagesPerStep;
+   uint visible_tokens = committed_tokens + active_rows;
+   uint pages = splash_attention_pages(visible_tokens);
+   uint per_split = splash_attention_pages_per_split(pages, splits);
+@@ -207,8 +233,8 @@ inline void splash_paged_attention_tile(
+   threadgroup_barrier(mem_flags::mem_threadgroup);
+ 
+   auto qt = tensor(tile_queries, dextents<int, 2>{D, M}, array<int, 2>{1, D});
+-  auto st = tensor(scores, dextents<int, 2>{N, M}, array<int, 2>{1, N});
+-  auto pt = tensor(probabilities, dextents<int, 2>{N, M}, array<int, 2>{1, N});
++  auto st = tensor(scores, dextents<int, 2>{W, M}, array<int, 2>{1, W});
++  auto pt = tensor(probabilities, dextents<int, 2>{W, M}, array<int, 2>{1, W});
+   auto p0 = pt.slice<N, M>(0, 0);
+   auto key_type = tensor(static_cast<device CacheElement *>(nullptr),
+                          dextents<int, 2>{D, N}, array<int, 2>{1, D});
+@@ -240,28 +266,30 @@ inline void splash_paged_attention_tile(
+       running[index] = 0.0f;
+   }
+ 
+-  for (uint page = page_begin; page < page_end; ++page) {
+-    const SplashKvPageTensors<CacheElement> tensors =
+-        addressing.page(page_table[page]);
+-    uint token_start = page * N;
+-    auto kt = tensor(tensors.keys, dextents<int, 2>{D, N}, array<int, 2>{1, D});
+-    auto vt = tensor(tensors.values, dextents<int, 2>{N, D}, array<int, 2>{1, N});
+-    device const float *key_scales = tensors.key_scales;
+-    device const float *value_scales = tensors.value_scales;
+-
+-    auto page_scores = qk.template get_destination_cooperative_tensor<
+-        decltype(q0), decltype(k0), float>();
+-    // One full-dimension product initializes the score CT through MPP.
+-    auto ks = kt.template slice<D, N>(0, 0);
+-    qk.run(q0, ks, page_scores);
+-    page_scores.store(st.slice<N, M>(0, 0));
++  for (uint page = page_begin; page < page_end; page += PagesPerStep) {
++    SplashAttentionStep<CacheElement, PagesPerStep> step;
++#pragma unroll
++    for (ushort p = 0; p < PagesPerStep; ++p) {
++      const bool inside = page + p < page_end;
++      const SplashKvPageTensors<CacheElement> tensors =
++          addressing.page(page_table[inside ? page + p : page_end - 1]);
++      step.values[p] = tensors.values;
++      step.key_scales[p] = reinterpret_cast<device const float4 *>(tensors.key_scales);
++      step.value_scales[p] = reinterpret_cast<device const float4 *>(tensors.value_scales);
++      step.token_start[p] = inside ? (page + p) * N : visible_tokens;
++      auto kt = tensor(tensors.keys, dextents<int, 2>{D, N}, array<int, 2>{1, D});
++      auto page_scores = qk.template get_destination_cooperative_tensor<
++          decltype(q0), decltype(k0), float>();
++      // One full-dimension product initializes the score CT through MPP.
++      auto ks = kt.template slice<D, N>(0, 0);
++      qk.run(q0, ks, page_scores);
++      page_scores.store(st.slice<N, M>(p * N, 0));
++    }
+     if (thread_index == 0)
+       atomic_store_explicit(rescale, 0u, memory_order_relaxed);
+     threadgroup_barrier(mem_flags::mem_threadgroup);
+     splash_attention_page_softmax<QueryHeadsPerKVHead, RowsPerTile, Quantized>(
+-        scores, probabilities, row_max, row_sum, previous_scale, rescale,
+-        reinterpret_cast<device const float4 *>(key_scales),
+-        reinterpret_cast<device const float4 *>(value_scales), token_start,
++        scores, probabilities, row_max, row_sum, previous_scale, rescale, step,
+         visible_tokens, committed_tokens, active_rows, thread_index);
+     threadgroup_barrier(mem_flags::mem_threadgroup);
+     if (atomic_load_explicit(rescale, memory_order_relaxed)) {
+@@ -273,8 +301,13 @@ inline void splash_paged_attention_tile(
+         running[index] *= previous_scale[coordinates[1]];
+       }
+     }
+-    auto vs = vt.template slice<N, D>(0, 0);
+-    pv.run(p0, vs, running);
++#pragma unroll
++    for (ushort p = 0; p < PagesPerStep; ++p) {
++      auto vt = tensor(step.values[p], dextents<int, 2>{N, D}, array<int, 2>{1, N});
++      auto vs = vt.template slice<N, D>(0, 0);
++      auto ps = pt.slice<N, M>(p * N, 0);
++      pv.run(ps, vs, running);
++    }
+     threadgroup_barrier(mem_flags::mem_threadgroup);
+   }
+   auto target = tensor(partials + slot * M * D, dextents<int, 2>{D, M},
+diff --git a/runtime/metal/kernels/decode/paged_attention.metal b/runtime/metal/kernels/decode/paged_attention.metal
+index 2c284f5a..6d8a0803 100644
+--- a/runtime/metal/kernels/decode/paged_attention.metal
++++ b/runtime/metal/kernels/decode/paged_attention.metal
+@@ -65,11 +65,17 @@ inline SplashVerifyTile splash_verify_attention_tile_at(
+       uint3 group [[threadgroup_position_in_grid]],                            \
+       uint thread_index [[thread_index_in_threadgroup]])
+ 
++// Two pages per step halve the per-page barriers and rescales; the scratch
++// for a third would pass the 32 KiB of threadgroup memory at kv2_g8.
++#ifndef SPLASH_VERIFY_PAGES_PER_STEP
++#define SPLASH_VERIFY_PAGES_PER_STEP 2u
++#endif
++
+ #define PAGED_VERIFY_SCRATCH(Group)                                            \
+   constexpr uint M = Group * SPLASH_TARGET_VERIFY_ROWS;                        \
+-  constexpr uint N = SplashKvPageTokens;                                       \
+-  alignas(16) threadgroup float scores[M * N];                                 \
+-  alignas(16) threadgroup bfloat probabilities[M * N];                         \
++  constexpr uint W = SplashKvPageTokens * SPLASH_VERIFY_PAGES_PER_STEP;        \
++  alignas(16) threadgroup float scores[M * W];                                 \
++  alignas(16) threadgroup bfloat probabilities[M * W];                         \
+   threadgroup float row_max[M];                                                \
+   threadgroup float row_sum[M];                                                \
+   threadgroup float previous_scale[M];                                         \
+@@ -88,7 +94,7 @@ inline SplashVerifyTile splash_verify_attention_tile_at(
+     PAGED_VERIFY_SCRATCH(Group)                                                \
+     PAGED_VERIFY_TILE_AT(Heads, Group)                                         \
+     splash_paged_attention_tile<Heads, Group, SPLASH_TARGET_VERIFY_ROWS,       \
+-                                CacheElement>(                                 \
++                                CacheElement, SPLASH_VERIFY_PAGES_PER_STEP>(   \
+         tile.queries, tile.page_table, params[group.z].kv, tile.kv_head,       \
+         tile.committed_tokens, SPLASH_TARGET_VERIFY_ROWS, tile.splits,         \
+         tile.split, partials, statistics, tile.slot, scores, probabilities,    \
