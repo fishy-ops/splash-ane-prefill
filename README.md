@@ -9,7 +9,7 @@ feed-forward layers.
 
 The work is a change to [Splash](https://github.com/incoai/splash), an
 open-source inference engine for Apple Silicon. It lives in [`engine/`](engine),
-branch `ane-prefill`: two commits on top of Splash 1.3.0.
+branch `ane-prefill`: three commits on top of Splash 1.3.0.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/ttft-dark.svg">
@@ -74,9 +74,12 @@ GPU at the int8 matmuls it is given, and only at those:
   <img alt="Matmul throughput: ANE int8 x int8 20.7, fp16 weights 12.7, int8 x fp16 10.4; GPU 4-bit 6.9, GPU attention 6.4; ANE attention 1.7-2.2 trillion ops per second" src="docs/charts/throughput-light.svg">
 </picture>
 
-The second commit is a small decode fix: Apple9 GPUs held a tile boundary
-measured on a 40-core M3 Max, and on the 20-core M4 Pro the register tile is
-9-28% faster for multi-lane decode.
+Two smaller commits sit beside it. Apple9 GPUs held a decode tile boundary
+measured on a 40-core M3 Max; on the 20-core M4 Pro the register tile is 9-28%
+faster for multi-lane decode. And a Neural Engine job that only reports late,
+which happened once mid-session on a Mac deep in swap, used to switch the split
+off until the server restarted; the split now reruns that chunk on the GPU and
+resumes once the job has reported, giving up after three such stalls.
 
 ## What did not work
 
