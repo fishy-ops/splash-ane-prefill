@@ -142,14 +142,33 @@ by [`docs/make_charts.py`](docs/make_charts.py) from the numbers above.
 ## Limitations
 
 - Tuned and measured on one machine. The GPU's shares are constants; a Mac with
-  a different GPU-to-ANE ratio would want its own, ideally calibrated at
-  startup the way the FFN share already is.
+  a different GPU-to-ANE ratio would want its own (see future work).
 - Only the dense Qwen3.8-27B path with affine 4-bit weights splits its
   projections; other models keep upstream behavior.
 - The projection splits allocate about 0.5 GB on first use, outside Splash's
   startup memory plan. While they are enabled the FFN's circuit breaker, which
   falls back to the GPU when the ANE loses time, stays off, because its
   calibration covers the FFN alone.
+
+## Future work
+
+- **Calibrate the projection splits at startup.** Splash already times the FFN
+  on both processors when it starts and picks the share where they finish
+  together. The projections could do the same: time each kind once on the GPU
+  and the ANE, solve for the balanced split in whole tiles, and build the ANE
+  program once. That replaces the M4 Pro constants on any Mac, and a
+  calibration that covers the projections would let the FFN's circuit breaker
+  run again.
+- **Adapt the split while serving.** Thermal throttling or another app using
+  the ANE moves the balance during a session. The handoff already records how
+  long each side waits for the other; a controller could switch between a few
+  prebuilt programs at different shares. Each ANE program takes seconds to
+  build, so the shares would have to be prepared ahead of time.
+- **A drafter for the deployed model.** In long agent sessions with thinking
+  enabled, decode accepts about 2.8 drafted tokens per step against 4.3 on short
+  prompts. Retraining the DFlash2 drafter (with LoRA, which fits in 48 GB) on
+  the target model's own long-context output should raise that, and decode
+  speed with it.
 
 ## License
 
