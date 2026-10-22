@@ -34,7 +34,7 @@ Splash already splits each layer's feed-forward network (FFN) between the GPU
 and the Neural Engine (ANE). The ANE runs its share from int8 weights that the
 GPU stages a layer ahead into double-buffered IOSurfaces, and the two hand off
 through a shared Metal event. The rest of each layer ran on the GPU alone while
-the ANE waited.
+the ANE waited. One layer, schematically (not to scale):
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/layer-dark.svg">
@@ -104,7 +104,8 @@ measured on a 40-core M3 Max, and on the 20-core M4 Pro the register tile is
   halves the kernel's barriers, but it was 3-24% slower: the doubled
   threadgroup scratch leaves fewer threadgroups resident per core, and this
   kernel lives on latency hiding. Retuning its history splits stayed within
-  noise. The patch is in [`experiments/`](experiments).
+  noise. The patch is in [`experiments/`](experiments). Change in time per
+  attention layer against the stock kernel:
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/attention-experiment-dark.svg">

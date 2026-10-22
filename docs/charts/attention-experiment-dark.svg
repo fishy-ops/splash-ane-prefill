@@ -1,19 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="212" viewBox="0 0 760 212" role="img" aria-label="Two-page attention experiment, percent slower per context" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="130" viewBox="0 0 720 130" role="img" aria-label="Two-page attention experiment, percent slower per context" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
 <title>Two-page attention experiment, percent slower per context</title>
-<rect width="100%" height="100%" rx="8" fill="#1a1a19"/>
-<text x="24.0" y="32.0" fill="#f0efec" font-size="15" font-weight="600" text-anchor="start">Experiment: two KV pages per attention step, change in time per layer</text>
-<text x="24.0" y="54.0" fill="#c3c2b7" font-size="12" font-weight="400" text-anchor="start">Positive is slower than the stock kernel; the change was reverted.</text>
-<text x="110.0" y="90.0" fill="#c3c2b7" font-size="12" font-weight="400" text-anchor="end">2K context</text>
-<path d="M120.0,72.0 H463.7 Q467.7,72.0 467.7,76.0 V94.0 Q467.7,98.0 463.7,98.0 H120.0 Z" fill="#d95926"/>
-<text x="475.7" y="90.0" fill="#f0efec" font-size="12" font-weight="400" text-anchor="start">+24%  (0.135 to 0.167 ms)</text>
-<text x="110.0" y="122.0" fill="#c3c2b7" font-size="12" font-weight="400" text-anchor="end">8K context</text>
-<path d="M120.0,104.0 H292.9 Q296.9,104.0 296.9,108.0 V126.0 Q296.9,130.0 292.9,130.0 H120.0 Z" fill="#d95926"/>
-<text x="304.9" y="122.0" fill="#f0efec" font-size="12" font-weight="400" text-anchor="start">+12%  (0.373 to 0.418 ms)</text>
-<text x="110.0" y="154.0" fill="#c3c2b7" font-size="12" font-weight="400" text-anchor="end">32K context</text>
-<path d="M120.0,136.0 H160.7 Q164.7,136.0 164.7,140.0 V158.0 Q164.7,162.0 160.7,162.0 H120.0 Z" fill="#d95926"/>
-<text x="172.7" y="154.0" fill="#f0efec" font-size="12" font-weight="400" text-anchor="start">+3%  (1.148 to 1.183 ms)</text>
-<text x="110.0" y="186.0" fill="#c3c2b7" font-size="12" font-weight="400" text-anchor="end">64K context</text>
-<path d="M120.0,168.0 H250.7 Q254.7,168.0 254.7,172.0 V190.0 Q254.7,194.0 250.7,194.0 H120.0 Z" fill="#d95926"/>
-<text x="262.7" y="186.0" fill="#f0efec" font-size="12" font-weight="400" text-anchor="start">+9%  (2.264 to 2.472 ms)</text>
-<line x1="120" y1="68" x2="120" y2="200" stroke="#383835"/>
+<text x="80.0" y="20.0" fill="#9198a1" font-size="12" font-weight="400" text-anchor="end">2K context</text>
+<rect x="90.0" y="4.0" width="347.7" height="22" rx="2" fill="#db6d28"/>
+<text x="445.7" y="20.0" fill="#f0f6fc" font-size="12" font-weight="400" text-anchor="start">+24%  (0.135 to 0.167 ms)</text>
+<text x="80.0" y="50.0" fill="#9198a1" font-size="12" font-weight="400" text-anchor="end">8K context</text>
+<rect x="90.0" y="34.0" width="176.9" height="22" rx="2" fill="#db6d28"/>
+<text x="274.9" y="50.0" fill="#f0f6fc" font-size="12" font-weight="400" text-anchor="start">+12%  (0.373 to 0.418 ms)</text>
+<text x="80.0" y="80.0" fill="#9198a1" font-size="12" font-weight="400" text-anchor="end">32K context</text>
+<rect x="90.0" y="64.0" width="44.7" height="22" rx="2" fill="#db6d28"/>
+<text x="142.7" y="80.0" fill="#f0f6fc" font-size="12" font-weight="400" text-anchor="start">+3%  (1.148 to 1.183 ms)</text>
+<text x="80.0" y="110.0" fill="#9198a1" font-size="12" font-weight="400" text-anchor="end">64K context</text>
+<rect x="90.0" y="94.0" width="134.7" height="22" rx="2" fill="#db6d28"/>
+<text x="232.7" y="110.0" fill="#f0f6fc" font-size="12" font-weight="400" text-anchor="start">+9%  (2.264 to 2.472 ms)</text>
+<line x1="90.0" y1="0.0" x2="90.0" y2="124.0" stroke="#3d444d"/>
 </svg>

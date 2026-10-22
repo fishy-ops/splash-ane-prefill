@@ -1,28 +1,26 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="266" viewBox="0 0 760 266" role="img" aria-label="Matmul throughput by device and number format" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="216" viewBox="0 0 720 216" role="img" aria-label="Matmul throughput by device and number format" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
 <title>Matmul throughput by device and number format</title>
-<rect width="100%" height="100%" rx="8" fill="#fcfcfb"/>
-<text x="24.0" y="32.0" fill="#0b0b0b" font-size="15" font-weight="600" text-anchor="start">Matmul throughput on the M4 Pro (trillion ops/s, higher is better)</text>
-<rect x="24" y="47" width="10" height="10" rx="2" fill="#eb6834"/>
-<text x="40.0" y="56.0" fill="#52514e" font-size="12" font-weight="400" text-anchor="start">Neural Engine</text>
-<rect x="151" y="47" width="10" height="10" rx="2" fill="#2a78d6"/>
-<text x="167.0" y="56.0" fill="#52514e" font-size="12" font-weight="400" text-anchor="start">GPU</text>
-<text x="280.0" y="93.0" fill="#52514e" font-size="12" font-weight="400" text-anchor="end">ANE, int8 weights x int8 activations</text>
-<path d="M290.0,76.0 H643.5 Q647.5,76.0 647.5,80.0 V96.0 Q647.5,100.0 643.5,100.0 H290.0 Z" fill="#eb6834"/>
-<text x="655.5" y="93.0" fill="#0b0b0b" font-size="12" font-weight="400" text-anchor="start">20.7</text>
-<text x="280.0" y="123.0" fill="#52514e" font-size="12" font-weight="400" text-anchor="end">ANE, fp16 weights</text>
-<path d="M290.0,106.0 H505.4 Q509.4,106.0 509.4,110.0 V126.0 Q509.4,130.0 505.4,130.0 H290.0 Z" fill="#eb6834"/>
-<text x="517.4" y="123.0" fill="#0b0b0b" font-size="12" font-weight="400" text-anchor="start">12.7</text>
-<text x="280.0" y="153.0" fill="#52514e" font-size="12" font-weight="400" text-anchor="end">ANE, int8 weights x fp16 activations</text>
-<path d="M290.0,136.0 H465.6 Q469.6,136.0 469.6,140.0 V156.0 Q469.6,160.0 465.6,160.0 H290.0 Z" fill="#eb6834"/>
-<text x="477.6" y="153.0" fill="#0b0b0b" font-size="12" font-weight="400" text-anchor="start">10.4</text>
-<text x="280.0" y="183.0" fill="#52514e" font-size="12" font-weight="400" text-anchor="end">GPU, 4-bit weights (prefill matmul)</text>
-<path d="M290.0,166.0 H405.2 Q409.2,166.0 409.2,170.0 V186.0 Q409.2,190.0 405.2,190.0 H290.0 Z" fill="#2a78d6"/>
-<text x="417.2" y="183.0" fill="#0b0b0b" font-size="12" font-weight="400" text-anchor="start">6.9</text>
-<text x="280.0" y="213.0" fill="#52514e" font-size="12" font-weight="400" text-anchor="end">GPU, prefill attention</text>
-<path d="M290.0,196.0 H396.5 Q400.5,196.0 400.5,200.0 V216.0 Q400.5,220.0 396.5,220.0 H290.0 Z" fill="#2a78d6"/>
-<text x="408.5" y="213.0" fill="#0b0b0b" font-size="12" font-weight="400" text-anchor="start">6.4</text>
-<text x="280.0" y="243.0" fill="#52514e" font-size="12" font-weight="400" text-anchor="end">ANE, prefill attention</text>
-<path d="M290.0,226.0 H320.5 Q324.5,226.0 324.5,230.0 V246.0 Q324.5,250.0 320.5,250.0 H290.0 Z" fill="#eb6834"/>
-<text x="332.5" y="243.0" fill="#0b0b0b" font-size="12" font-weight="400" text-anchor="start">1.7-2.2</text>
-<line x1="290" y1="72" x2="290" y2="256" stroke="#c3c2b7"/>
+<rect x="0" y="5" width="10" height="10" rx="2" fill="#bc4c00"/>
+<text x="15.0" y="14.0" fill="#59636e" font-size="12" font-weight="400" text-anchor="start">Neural Engine</text>
+<rect x="125" y="5" width="10" height="10" rx="2" fill="#0969da"/>
+<text x="140.0" y="14.0" fill="#59636e" font-size="12" font-weight="400" text-anchor="start">GPU</text>
+<text x="250.0" y="46.0" fill="#59636e" font-size="12" font-weight="400" text-anchor="end">ANE, int8 weights x int8 activations</text>
+<rect x="260.0" y="30.0" width="367.0" height="22" rx="2" fill="#bc4c00"/>
+<text x="635.0" y="46.0" fill="#1f2328" font-size="12" font-weight="400" text-anchor="start">20.7</text>
+<text x="250.0" y="76.0" fill="#59636e" font-size="12" font-weight="400" text-anchor="end">ANE, fp16 weights</text>
+<rect x="260.0" y="60.0" width="225.1" height="22" rx="2" fill="#bc4c00"/>
+<text x="493.1" y="76.0" fill="#1f2328" font-size="12" font-weight="400" text-anchor="start">12.7</text>
+<text x="250.0" y="106.0" fill="#59636e" font-size="12" font-weight="400" text-anchor="end">ANE, int8 weights x fp16 activations</text>
+<rect x="260.0" y="90.0" width="184.4" height="22" rx="2" fill="#bc4c00"/>
+<text x="452.4" y="106.0" fill="#1f2328" font-size="12" font-weight="400" text-anchor="start">10.4</text>
+<text x="250.0" y="136.0" fill="#59636e" font-size="12" font-weight="400" text-anchor="end">GPU, 4-bit weights (prefill matmul)</text>
+<rect x="260.0" y="120.0" width="122.3" height="22" rx="2" fill="#0969da"/>
+<text x="390.3" y="136.0" fill="#1f2328" font-size="12" font-weight="400" text-anchor="start">6.9</text>
+<text x="250.0" y="166.0" fill="#59636e" font-size="12" font-weight="400" text-anchor="end">GPU, prefill attention</text>
+<rect x="260.0" y="150.0" width="113.5" height="22" rx="2" fill="#0969da"/>
+<text x="381.5" y="166.0" fill="#1f2328" font-size="12" font-weight="400" text-anchor="start">6.4</text>
+<text x="250.0" y="196.0" fill="#59636e" font-size="12" font-weight="400" text-anchor="end">ANE, prefill attention</text>
+<rect x="260.0" y="180.0" width="35.5" height="22" rx="2" fill="#bc4c00"/>
+<text x="303.5" y="196.0" fill="#1f2328" font-size="12" font-weight="400" text-anchor="start">1.7-2.2</text>
+<line x1="260.0" y1="26.0" x2="260.0" y2="210.0" stroke="#d1d9e0"/>
 </svg>

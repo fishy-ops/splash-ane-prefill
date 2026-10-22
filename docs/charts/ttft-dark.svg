@@ -1,21 +1,19 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="760" height="200" viewBox="0 0 760 200" role="img" aria-label="Time to first token, Splash 1.3.0 versus this branch" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+<svg xmlns="http://www.w3.org/2000/svg" width="720" height="146" viewBox="0 0 720 146" role="img" aria-label="Time to first token, Splash 1.3.0 versus this branch" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif">
 <title>Time to first token, Splash 1.3.0 versus this branch</title>
-<rect width="100%" height="100%" rx="8" fill="#1a1a19"/>
-<text x="24.0" y="32.0" fill="#f0efec" font-size="15" font-weight="600" text-anchor="start">Time to first token, uncached prompt (lower is better)</text>
-<rect x="24" y="47" width="10" height="10" rx="2" fill="#6b6a65"/>
-<text x="40.0" y="56.0" fill="#c3c2b7" font-size="12" font-weight="400" text-anchor="start">Splash 1.3.0</text>
-<rect x="144" y="47" width="10" height="10" rx="2" fill="#3987e5"/>
-<text x="160.0" y="56.0" fill="#c3c2b7" font-size="12" font-weight="400" text-anchor="start">This branch</text>
-<text x="24.0" y="90.0" fill="#c3c2b7" font-size="13" font-weight="600" text-anchor="start">6,144-token prompt</text>
-<line x1="24" y1="104" x2="24" y2="186" stroke="#383835"/>
-<path d="M24.0,108.0 H250.0 Q254.0,108.0 254.0,112.0 V138.0 Q254.0,142.0 250.0,142.0 H24.0 Z" fill="#6b6a65"/>
-<text x="262.0" y="130.0" fill="#f0efec" font-size="13" font-weight="400" text-anchor="start">25.1 s</text>
-<path d="M24.0,148.0 H154.4 Q158.4,148.0 158.4,152.0 V178.0 Q158.4,182.0 154.4,182.0 H24.0 Z" fill="#3987e5"/>
-<text x="166.4" y="170.0" fill="#f0efec" font-size="13" font-weight="400" text-anchor="start">14.7 s  ·  1.71x faster</text>
-<text x="396.0" y="90.0" fill="#c3c2b7" font-size="13" font-weight="600" text-anchor="start">30,000-token prompt</text>
-<line x1="396" y1="104" x2="396" y2="186" stroke="#383835"/>
-<path d="M396.0,108.0 H622.0 Q626.0,108.0 626.0,112.0 V138.0 Q626.0,142.0 622.0,142.0 H396.0 Z" fill="#6b6a65"/>
-<text x="634.0" y="130.0" fill="#f0efec" font-size="13" font-weight="400" text-anchor="start">143.3 s</text>
-<path d="M396.0,148.0 H539.2 Q543.2,148.0 543.2,152.0 V178.0 Q543.2,182.0 539.2,182.0 H396.0 Z" fill="#3987e5"/>
-<text x="551.2" y="170.0" fill="#f0efec" font-size="13" font-weight="400" text-anchor="start">91.7 s  ·  1.56x faster</text>
+<rect x="0" y="5" width="10" height="10" rx="2" fill="#656c76"/>
+<text x="15.0" y="14.0" fill="#9198a1" font-size="12" font-weight="400" text-anchor="start">Splash 1.3.0</text>
+<rect x="118" y="5" width="10" height="10" rx="2" fill="#4493f8"/>
+<text x="133.0" y="14.0" fill="#9198a1" font-size="12" font-weight="400" text-anchor="start">This branch</text>
+<text x="0.0" y="52.0" fill="#f0f6fc" font-size="13" font-weight="600" text-anchor="start">6,144-token prompt</text>
+<line x1="0.0" y1="62.0" x2="0.0" y2="140.0" stroke="#3d444d"/>
+<rect x="0.0" y="66.0" width="210.0" height="32" rx="2" fill="#656c76"/>
+<text x="218.0" y="87.0" fill="#f0f6fc" font-size="13" font-weight="400" text-anchor="start">25.1 s</text>
+<rect x="0.0" y="104.0" width="122.7" height="32" rx="2" fill="#4493f8"/>
+<text x="130.7" y="125.0" fill="#f0f6fc" font-size="13" font-weight="400" text-anchor="start">14.7 s (1.71x faster)</text>
+<text x="370.0" y="52.0" fill="#f0f6fc" font-size="13" font-weight="600" text-anchor="start">30,000-token prompt</text>
+<line x1="370.0" y1="62.0" x2="370.0" y2="140.0" stroke="#3d444d"/>
+<rect x="370.0" y="66.0" width="210.0" height="32" rx="2" fill="#656c76"/>
+<text x="588.0" y="87.0" fill="#f0f6fc" font-size="13" font-weight="400" text-anchor="start">143.3 s</text>
+<rect x="370.0" y="104.0" width="134.4" height="32" rx="2" fill="#4493f8"/>
+<text x="512.4" y="125.0" fill="#f0f6fc" font-size="13" font-weight="400" text-anchor="start">91.7 s (1.56x faster)</text>
 </svg>
