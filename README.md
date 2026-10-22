@@ -154,6 +154,25 @@ by [`docs/make_charts.py`](docs/make_charts.py) from the numbers above.
   falls back to the GPU when the ANE loses time, stays off, because its
   calibration covers the FFN alone.
 
+## Planned evaluation
+
+- **An end-to-end agent session.** Record one real coding-agent session's
+  requests through the proxy (prompts and tool results), then replay that exact
+  sequence against Splash 1.3.0, this branch, and this branch with the proxy,
+  with the same output lengths, and report its wall-clock time for each. A
+  replay rather than live runs, because two engines' rounding sends a live agent
+  down different paths after a few turns.
+- **Variance.** The 6,144-token figures above come from three runs and the
+  30,000-token ones from two. Rerun both with five or more runs per setup and
+  report median, minimum and maximum.
+- **Long-context quality.** Greedy output matching at 8K is weak evidence, and
+  int8 rounding could compound over long prompts. At 30,000 tokens: compare the
+  two engines' next-token predictions and probabilities at many positions of the
+  same document (in effect a perplexity comparison), and run a retrieval check
+  with facts placed at several depths. Splash 1.3.0 already runs the FFN in
+  int8 on the ANE; this branch extends it to the mixers' projections, which is
+  what the check has to clear.
+
 ## Future work
 
 - **Calibrate the projection splits at startup.** Splash already times the FFN
