@@ -44,8 +44,6 @@ tokenizer, then 128 generated tokens. Every engine's prompt reading stayed withi
 - **Generation.** Splash verifies tokens from its DFlash2 draft model, a part
   of the engine; MLX and llama.cpp generate one token per step. This project
   targets prompt reading, and leaves generation where Splash had it.
-- **Heat.** MLX at 6,144 tokens ran first and again last, with the Mac at its
-  hottest: 131.6 and 131.8 tok/s.
 
 Greedy output on an 8K prompt is byte-identical to Splash 1.3.0. The gain over
 it shrinks with length because attention, which grows quadratically and stays on
