@@ -2,31 +2,54 @@
 
 Local LLMs on a Mac spend much of an agent session reading prompts: a coding
 agent's first request is tens of thousands of tokens, and every tool result
-after it adds thousands more. This project makes that phase 1.6-1.7x faster for
-a 27B model on an M4 Pro, with the same output, by giving the Apple Neural
-Engine a share of nearly every matrix multiply in the model instead of only the
-feed-forward layers.
+after it adds thousands more. This project reads prompts **3.0-3.5x faster than
+llama.cpp and 2.7-3.2x faster than MLX** with a 27B model on an M4 Pro, by giving
+the Apple Neural Engine a share of nearly every matrix multiply in the model
+instead of only the feed-forward layers.
 
 The work is a change to [Splash](https://github.com/incoai/splash), an
-open-source inference engine for Apple Silicon. It lives in [`engine/`](engine),
-branch `ane-prefill`: three commits on top of Splash 1.3.0.
+open-source inference engine for Apple Silicon that already ran the feed-forward
+layers on the Neural Engine. It lives in [`engine/`](engine), branch
+`ane-prefill`: three commits on top of Splash 1.3.0, which it makes 1.55-1.72x
+faster with the same output.
 
 <picture>
-  <source media="(prefers-color-scheme: dark)" srcset="docs/charts/ttft-dark.svg">
-  <img alt="Time to first token: 25.1 s to 14.7 s at 6,144 tokens, 143.3 s to 91.7 s at 30,000 tokens" src="docs/charts/ttft-light.svg">
+  <source media="(prefers-color-scheme: dark)" srcset="docs/charts/engines-dark.svg">
+  <img alt="Prompt reading at 6,144 tokens: llama.cpp 121, MLX 132, Splash 1.3.0 244, this branch 420 tok/s. At 30,000 tokens: 108, 120, 210 and 325 tok/s" src="docs/charts/engines-light.svg">
 </picture>
 
-| Uncached prompt | Splash 1.3.0 | This branch | Speedup |
-|---|---|---|---|
-| 6,144 tokens | 25.08 s | 14.65 s | 1.71x |
-| 30,000 tokens | 143.3 s | 91.7 s | 1.56x |
+| Uncached prompt | llama.cpp | MLX | Splash 1.3.0 | This branch |
+|---|---|---|---|---|
+| 6,144 tokens, prompt reading | 121.2 tok/s | 131.8 tok/s | 244.5 tok/s | **420.5 tok/s** |
+| time to first token | 50.7 s | 46.6 s | 25.1 s | **14.6 s** |
+| 30,000 tokens, prompt reading | 107.6 tok/s | 120.1 tok/s | 209.8 tok/s | **325.3 tok/s** |
+| time to first token | 278.8 s | 249.8 s | 143.0 s | **92.3 s** |
+| Generation after 6,144 / 30,000 | 12.5 / 10.7 tok/s | 15.0 / 13.4 tok/s | 36.5 / 36.0 tok/s | 38.4 / 35.5 tok/s |
 
-Qwen3.8-27B, MLX affine 4-bit weights, on a MacBook Pro with an M4 Pro (20-core
-GPU, 16-core Neural Engine, 48 GB) running macOS 27.0.1. Each prompt is new to
-the server and sized to the exact token count with its tokenizer; times are
-medians. Greedy output on an 8K prompt is byte-identical to Splash 1.3.0. The
-gain shrinks with length because attention, which grows quadratically and
-stays on the GPU, takes more of a long prompt.
+Qwen3.8-27B on a MacBook Pro with an M4 Pro (20-core GPU, 16-core Neural Engine,
+48 GB), macOS 27.0.1, all four engines in one session with nothing else running
+and the fans held at maximum. Medians of 5 runs (llama.cpp at 30,000 tokens: 3),
+each a prompt the engine had not seen, of exactly that many tokens by its own
+tokenizer, then 128 generated tokens. Every engine's prompt reading stayed within
+1% of its median across runs; the full log is in
+[`results/`](results/industry-benchmark.log).
+
+- **Weights.** MLX and both Splash builds load the same MLX affine 4-bit file;
+  llama.cpp loads `unsloth/Qwen3.8-27B-GGUF` at Q4_K_M, the format its results
+  are usually quoted in (about 4.8 bits per weight against 4.5).
+- **Engines.** MLX through `mlx_lm.benchmark` (mlx-lm 0.32), which times prompt
+  reading itself (time to first token is derived from it); llama.cpp through
+  `llama-server` (Homebrew), prompt cache off, timed by its own report. Each got
+  one warm-up per prompt size.
+- **Generation.** Splash verifies tokens from its DFlash2 draft model, a part
+  of the engine; MLX and llama.cpp generate one token per step. This project
+  targets prompt reading, and leaves generation where Splash had it.
+- **Heat.** MLX at 6,144 tokens ran first and again last, with the Mac at its
+  hottest: 131.6 and 131.8 tok/s.
+
+Greedy output on an 8K prompt is byte-identical to Splash 1.3.0. The gain over
+it shrinks with length because attention, which grows quadratically and stays on
+the GPU, takes more of a long prompt.
 
 ## How it works
 
@@ -135,13 +158,17 @@ cd splash-ane-prefill/engine && make -j8
 ./splash serve --model mlx-community/Qwen3.8-27B-4bit --port 8000
 
 # in another shell, from the repository root
-python3 bench/ttft.py --tokens 6144 --reps 3
+python3 bench/ttft.py --tokens 6144 --reps 5
 python3 bench/decode.py --contexts 1024,8192,30000
+
+# the other engines, on the same Mac
+mlx_lm.benchmark --model mlx-community/Qwen3.8-27B-4bit -p 6144 -g 128 -n 5
+python3 bench/llama_cpp.py Qwen3.8-27B-UD-Q4_K_M.gguf
 ```
 
-For the baseline, check out `1.3.0` in `engine/`, rebuild and rerun. `ttft.py`
-prints each request, so the first, cold one is visible. The charts are drawn
-by [`docs/make_charts.py`](docs/make_charts.py) from the numbers above.
+For the Splash baseline, check out `1.3.0` in `engine/`, rebuild and rerun.
+`ttft.py` prints each request, so the first, cold one is visible. The charts are
+drawn by [`docs/make_charts.py`](docs/make_charts.py) from the numbers above.
 
 ## Limitations
 
@@ -162,9 +189,6 @@ by [`docs/make_charts.py`](docs/make_charts.py) from the numbers above.
   with the same output lengths, and report its wall-clock time for each. A
   replay rather than live runs, because two engines' rounding sends a live agent
   down different paths after a few turns.
-- **Variance.** The 6,144-token figures above come from three runs and the
-  30,000-token ones from two. Rerun both with five or more runs per setup and
-  report median, minimum and maximum.
 - **Long-context quality.** Greedy output matching at 8K is weak evidence, and
   int8 rounding could compound over long prompts. At 30,000 tokens: compare the
   two engines' next-token predictions and probabilities at many positions of the

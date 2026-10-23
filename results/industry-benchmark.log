@@ -1,0 +1,66 @@
+# Four engines, one session (2026-10-22), M4 Pro, fans at maximum, nothing else running.
+# stock-0d5a035e = Splash 1.3.0; aneproj-v15 = this branch. llama.cpp's 30000-token runs stopped after 3.
+[20:11] MLX, 6144-token prompts (first session):
+Trial 1:  prompt_tps=131.750, generation_tps=15.001, peak_memory=18.883, total_time=55.179
+Trial 2:  prompt_tps=131.697, generation_tps=15.000, peak_memory=18.883, total_time=55.199
+Trial 3:  prompt_tps=131.312, generation_tps=14.641, peak_memory=18.884, total_time=55.544
+Trial 4:  prompt_tps=131.661, generation_tps=14.908, peak_memory=18.884, total_time=55.264
+Trial 5:  prompt_tps=131.629, generation_tps=14.852, peak_memory=18.884, total_time=55.308
+Averages: prompt_tps=131.610, generation_tps=14.880, peak_memory=18.884
+[20:38:46] waiting for MLX 30K to finish
+[20:42:59] MLX, 30000-token prompts:
+Trial 1:  prompt_tps=120.090, generation_tps=13.445, peak_memory=22.575, total_time=259.344
+Trial 2:  prompt_tps=120.101, generation_tps=13.440, peak_memory=22.575, total_time=259.325
+Trial 3:  prompt_tps=120.094, generation_tps=13.449, peak_memory=22.576, total_time=259.333
+Trial 4:  prompt_tps=120.029, generation_tps=13.410, peak_memory=22.576, total_time=259.496
+Trial 5:  prompt_tps=120.107, generation_tps=13.384, peak_memory=22.577, total_time=259.352
+Averages: prompt_tps=120.084, generation_tps=13.426, peak_memory=22.576
+[20:42:59] Splash stock-0d5a035e, 6144-token prompts
+  run 1: 6148 tok, TTFT 25.41 s, prompt 242.0 tok/s, generated 128 at 36.5 tok/s
+  run 2: 6143 tok, TTFT 25.11 s, prompt 244.7 tok/s, generated 128 at 38.6 tok/s
+  run 3: 6138 tok, TTFT 25.10 s, prompt 244.5 tok/s, generated 128 at 40.1 tok/s
+  run 4: 6148 tok, TTFT 25.30 s, prompt 243.0 tok/s, generated 128 at 32.6 tok/s
+  run 5: 6139 tok, TTFT 25.10 s, prompt 244.6 tok/s, generated 128 at 35.9 tok/s
+industry-stock-0d5a035e-6144 TTFT @~6144: median 25.11 s, first (cold) 25.41 s, mean 25.20 s
+[20:45:47] Splash stock-0d5a035e, 30000-token prompts
+  run 1: 29986 tok, TTFT 142.96 s, prompt 209.8 tok/s, generated 128 at 36.0 tok/s
+  run 2: 30012 tok, TTFT 143.15 s, prompt 209.7 tok/s, generated 128 at 34.7 tok/s
+  run 3: 30012 tok, TTFT 143.03 s, prompt 209.8 tok/s, generated 128 at 37.7 tok/s
+  run 4: 30013 tok, TTFT 143.07 s, prompt 209.8 tok/s, generated 128 at 36.6 tok/s
+  run 5: 30000 tok, TTFT 143.00 s, prompt 209.8 tok/s, generated 128 at 31.7 tok/s
+industry-stock-0d5a035e-30000 TTFT @~30000: median 143.03 s, first (cold) 142.96 s, mean 143.04 s
+[20:58:22] Splash aneproj-v15, 6144-token prompts
+  run 1: 6148 tok, TTFT 14.86 s, prompt 413.8 tok/s, generated 128 at 39.9 tok/s
+  run 2: 6143 tok, TTFT 14.57 s, prompt 421.6 tok/s, generated 128 at 42.4 tok/s
+  run 3: 6138 tok, TTFT 14.59 s, prompt 420.7 tok/s, generated 128 at 35.1 tok/s
+  run 4: 6148 tok, TTFT 14.76 s, prompt 416.6 tok/s, generated 128 at 38.4 tok/s
+  run 5: 6139 tok, TTFT 14.60 s, prompt 420.5 tok/s, generated 128 at 35.0 tok/s
+industry-aneproj-v15-6144 TTFT @~6144: median 14.60 s, first (cold) 14.86 s, mean 14.67 s
+[21:00:12] Splash aneproj-v15, 30000-token prompts
+  run 1: 29986 tok, TTFT 91.35 s, prompt 328.2 tok/s, generated 128 at 37.2 tok/s
+  run 2: 30012 tok, TTFT 91.47 s, prompt 328.1 tok/s, generated 128 at 33.8 tok/s
+  run 3: 30012 tok, TTFT 92.26 s, prompt 325.3 tok/s, generated 128 at 36.7 tok/s
+  run 4: 30013 tok, TTFT 93.24 s, prompt 321.9 tok/s, generated 128 at 35.5 tok/s
+  run 5: 30000 tok, TTFT 93.43 s, prompt 321.1 tok/s, generated 128 at 32.6 tok/s
+industry-aneproj-v15-30000 TTFT @~30000: median 92.26 s, first (cold) 91.35 s, mean 92.35 s
+[21:08:32] llama.cpp (Q4_K_M), 6144 then 30000-token prompts
+llama.cpp server ready
+  llama.cpp 6144: warm-up done
+  run 1: 6142 tok, TTFT 50.67 s, prompt 121.2 tok/s, generated 128 at 12.5 tok/s
+  run 2: 6151 tok, TTFT 50.70 s, prompt 121.3 tok/s, generated 128 at 12.5 tok/s
+  run 3: 6160 tok, TTFT 51.57 s, prompt 119.4 tok/s, generated 128 at 12.5 tok/s
+  run 4: 6141 tok, TTFT 50.67 s, prompt 121.2 tok/s, generated 128 at 12.5 tok/s
+  run 5: 6141 tok, TTFT 50.61 s, prompt 121.3 tok/s, generated 128 at 12.5 tok/s
+llama.cpp 6144: prompt 121.2 tok/s (119.4-121.3), generation 12.5 tok/s (12.5-12.5)
+  llama.cpp 30000: warm-up done
+  run 1: 29999 tok, TTFT 278.79 s, prompt 107.6 tok/s, generated 128 at 10.7 tok/s
+  run 2: 29991 tok, TTFT 278.75 s, prompt 107.6 tok/s, generated 128 at 10.7 tok/s
+  run 3: 30016 tok, TTFT 278.66 s, prompt 107.7 tok/s, generated 128 at 10.7 tok/s
+[21:34:32] MLX, 6144-token prompts again (same conditions as the rest)
+Trial 1:  prompt_tps=131.838, generation_tps=15.017, peak_memory=18.883, total_time=55.139
+Trial 2:  prompt_tps=131.829, generation_tps=15.019, peak_memory=18.884, total_time=55.141
+Trial 3:  prompt_tps=131.816, generation_tps=15.022, peak_memory=18.884, total_time=55.144
+Trial 4:  prompt_tps=131.768, generation_tps=14.991, peak_memory=18.884, total_time=55.179
+Trial 5:  prompt_tps=131.848, generation_tps=15.028, peak_memory=18.885, total_time=55.129
+Averages: prompt_tps=131.820, generation_tps=15.015, peak_memory=18.884
+[21:40:10] ALL DONE

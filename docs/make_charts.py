@@ -17,8 +17,15 @@ THEMES = {
     "dark": dict(text="#f0f6fc", muted="#9198a1", grid="#3d444d", gpu="#4493f8", ane="#db6d28", base="#656c76"),
 }
 
-# Time to first token of uncached prompts, median seconds: Splash 1.3.0, this branch.
-TTFT = [("6,144-token prompt", 25.08, 14.65), ("30,000-token prompt", 143.3, 91.7)]
+# Prompt reading, uncached prompts, tokens per second: median, min, max over the
+# runs, and the median time to first token in seconds (results/industry-benchmark-*).
+ENGINES = ["llama.cpp (Q4_K_M)", "MLX", "Splash 1.3.0", "This branch"]
+PROMPT = {
+    "6,144-token prompt": [(121.2, 119.4, 121.3, 50.7), (131.8, 131.8, 131.8, 46.6),
+                           (244.5, 242.0, 244.7, 25.1), (420.5, 413.8, 421.6, 14.6)],
+    "30,000-token prompt": [(107.6, 107.6, 107.7, 278.8), (120.1, 120.0, 120.1, 249.8),
+                            (209.8, 209.7, 209.8, 143.0), (325.3, 321.1, 328.2, 92.3)],
+}
 # Throughput of one large matmul, trillion operations per second.
 THROUGHPUT = [
     ("ANE, int8 weights x int8 activations", 20.7, "ane"),
@@ -67,20 +74,28 @@ def legend(x, y, t, items):
     return out
 
 
-def ttft_chart(t):
-    width, panel = 720, 330
-    body = legend(0, 14, t, [("Splash 1.3.0", t["base"]), ("This branch", t["gpu"])])
-    for index, (label, stock, branch) in enumerate(TTFT):
-        x0 = index * (panel + 40)
-        scale = (panel - 120) / stock
-        body += text(x0, 52, label, t["text"], 13, weight=600)
-        body += rule(x0, 62, x0, 140, t)
-        for row, (value, color) in enumerate(((stock, t["base"]), (branch, t["gpu"]))):
-            y = 66 + row * 38
-            body += bar(x0, y, value * scale, 32, color)
-            note = f" ({stock / branch:.2f}x faster)" if row else ""
-            body += text(x0 + value * scale + 8, y + 21, f"{value:.1f} s{note}", t["text"], 13)
-    return svg(width, 146, body, "Time to first token, Splash 1.3.0 versus this branch")
+def engines_chart(t):
+    width, label_width, row = 720, 132, 30
+    scale = (width - label_width - 150) / 440
+    body, top = "", 0
+    for title, results in PROMPT.items():
+        body += text(0, top + 14, title, t["text"], 13, weight=600)
+        for index, (engine, (median, low, high, ttft)) in enumerate(zip(ENGINES, results)):
+            y = top + 26 + index * row
+            ours = engine == "This branch"
+            body += text(label_width - 10, y + 15, engine, t["text"] if ours else t["muted"], 12, "end",
+                         600 if ours else 400)
+            body += bar(label_width, y, median * scale, row - 8, t["gpu"] if ours else t["base"])
+            # The runs' range, where it shows.
+            if (high - low) * scale >= 2:
+                mid = y + (row - 8) / 2
+                body += rule(label_width + low * scale, mid, label_width + high * scale, mid,
+                             {"grid": t["text"]})
+            body += text(label_width + median * scale + 8, y + 15, f"{median:.0f} tok/s · {ttft:.1f} s",
+                         t["text"], 12, weight=600 if ours else 400)
+        body += rule(label_width, top + 22, label_width, top + 26 + len(ENGINES) * row, t)
+        top += 34 + len(ENGINES) * row
+    return svg(width, top, body, "Prompt reading speed and time to first token, four engines, 6K and 30K prompts")
 
 
 def layer_chart(t):
@@ -158,7 +173,7 @@ def attention_chart(t):
 
 def main():
     OUT.mkdir(exist_ok=True)
-    charts = {"ttft": ttft_chart, "layer": layer_chart, "throughput": throughput_chart,
+    charts = {"engines": engines_chart, "layer": layer_chart, "throughput": throughput_chart,
               "decode": decode_chart, "attention-experiment": attention_chart}
     for name, draw in charts.items():
         for mode, theme in THEMES.items():
