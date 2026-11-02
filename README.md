@@ -34,9 +34,12 @@ tokenizer, then 128 generated tokens. Every engine's prompt reading stayed withi
 1% of its median across runs; the full log is in
 [`results/`](results/industry-benchmark.log).
 
-- **Weights.** MLX and both Splash builds load the same MLX affine 4-bit file;
-  llama.cpp loads `unsloth/Qwen3.8-27B-GGUF` at Q4_K_M, the format its results
-  are usually quoted in (about 4.8 bits per weight against 4.5).
+- **Weights.** MLX and both Splash builds load the same MLX affine 4-bit file of
+  a Qwen3.8-27B fine-tune. It has the base model's architecture and
+  quantization, which is what sets the speed; the weight values do not.
+  llama.cpp loads the base model from `unsloth/Qwen3.8-27B-GGUF` at Q4_K_M, the
+  format its results are usually quoted in (about 4.8 bits per weight against
+  4.5).
 - **Engines.** MLX through `mlx_lm.benchmark` (mlx-lm 0.32), which times prompt
   reading itself (time to first token is derived from it); llama.cpp through
   `llama-server` (Homebrew), prompt cache off, timed by its own report. Each got
@@ -95,12 +98,15 @@ GPU at the int8 matmuls it is given, and only at those:
   <img alt="Matmul throughput: ANE int8 x int8 20.7, fp16 weights 12.7, int8 x fp16 10.4; GPU 4-bit 6.9, GPU attention 6.4; ANE attention 1.7-2.2 trillion ops per second" src="docs/charts/throughput-light.svg">
 </picture>
 
-Two smaller commits sit beside it. Apple9 GPUs held a decode tile boundary
-measured on a 40-core M3 Max; on the 20-core M4 Pro the register tile is 9-28%
-faster for multi-lane decode. And a Neural Engine job that only reports late,
-which happened once mid-session on a Mac deep in swap, used to switch the split
-off until the server restarted; the split now reruns that chunk on the GPU and
-resumes once the job has reported, giving up after three such stalls.
+### Also in the branch
+
+- **Recovering from a late Neural Engine job.** A job that only reported late,
+  which happened once mid-session on a Mac deep in swap, switched the split off
+  until the server restarted. The split now reruns that chunk on the GPU and
+  resumes once the job has reported, giving up after three such stalls.
+- **A decode tile boundary for smaller Apple9 GPUs.** It was measured on a
+  40-core M3 Max; on the 20-core M4 Pro the register tile is 9-28% faster for
+  multi-lane decode.
 
 ## What did not work
 
@@ -164,7 +170,8 @@ mlx_lm.benchmark --model mlx-community/Qwen3.8-27B-4bit -p 6144 -g 128 -n 5
 python3 bench/llama_cpp.py Qwen3.8-27B-UD-Q4_K_M.gguf
 ```
 
-For the Splash baseline, check out `1.3.0` in `engine/`, rebuild and rerun.
+Any Qwen3.8-27B MLX affine 4-bit checkpoint works. For the Splash baseline,
+check out `1.3.0` in `engine/`, rebuild and rerun.
 `ttft.py` prints each request, so the first, cold one is visible. The charts are
 drawn by [`docs/make_charts.py`](docs/make_charts.py) from the numbers above.
 
@@ -172,6 +179,9 @@ drawn by [`docs/make_charts.py`](docs/make_charts.py) from the numbers above.
 
 - Tuned and measured on one machine. The GPU's shares are constants; a Mac with
   a different GPU-to-ANE ratio would want its own (see future work).
+- Built on Splash 1.3.0. Upstream has since moved every model to block-quantized
+  weights and removed the affine 4-bit path this branch reads, so the change
+  has to be ported before it can be proposed upstream.
 - Only the dense Qwen3.8-27B path with affine 4-bit weights splits its
   projections; other models keep upstream behavior.
 - The projection splits allocate about 0.5 GB on first use, outside Splash's
