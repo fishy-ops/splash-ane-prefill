@@ -11,7 +11,8 @@ The work is a change to [Splash](https://github.com/incoai/splash), an
 open-source inference engine for Apple Silicon that already ran the feed-forward
 layers on the Neural Engine. It lives in [`engine/`](engine), branch
 `ane-prefill`: three commits on top of Splash 1.3.0, which it makes 1.55-1.72x
-faster with the same output.
+faster with the same output. A [port to current Splash](#ported-to-current-splash)
+calibrates the split on each Mac.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/engines-dark.svg">
@@ -108,6 +109,25 @@ GPU at the int8 matmuls it is given, and only at those:
   40-core M3 Max; on the 20-core M4 Pro the register tile is 9-28% faster for
   multi-lane decode.
 
+## Ported to current Splash
+
+The change is ported to upstream Splash's current main, which reads
+block-quantized weights, as branch
+[`ane-projections`](https://github.com/fishy-ops/splash/tree/ane-projections)
+of fishy-ops/splash. The port no longer uses M4 Pro constants. On first start
+it times each projection kind on both processors, as Splash already does for
+the FFN, picks each kind's share or keeps it on the GPU, and remembers the
+result. Each kind has its own circuit breaker, and the startup memory plan
+covers the projections.
+
+Same M4 Pro, uncached time to first token, median of 3 runs:
+
+| | 6,144 tokens | 30,000 tokens |
+|---|---|---|
+| GPU alone | 44.1 s | 237.1 s |
+| FFN split (upstream main) | 23.9 s | 138.6 s |
+| + projections, calibrated (shares 0.75-0.80) | **14.6 s** | **93.0 s** |
+
 ## What did not work
 
 - **Attention on the ANE.** 1.7-2.2 trillion ops/s against 6.4 on the GPU, and
@@ -177,17 +197,17 @@ drawn by [`docs/make_charts.py`](docs/make_charts.py) from the numbers above.
 
 ## Limitations
 
-- Tuned and measured on one machine. The GPU's shares are constants; a Mac with
-  a different GPU-to-ANE ratio would want its own (see future work).
-- Built on Splash 1.3.0. Upstream has since moved every model to block-quantized
-  weights and removed the affine 4-bit path this branch reads, so the change
-  has to be ported before it can be proposed upstream.
-- Only the dense Qwen3.8-27B path with affine 4-bit weights splits its
-  projections; other models keep upstream behavior.
-- The projection splits allocate about 0.5 GB on first use, outside Splash's
-  startup memory plan. While they are enabled the FFN's circuit breaker, which
-  falls back to the GPU when the ANE loses time, stays off, because its
-  calibration covers the FFN alone.
+- Measured on one machine. In `engine/` the GPU's shares are M4 Pro
+  constants; the [port](#ported-to-current-splash) calibrates them on each Mac,
+  but only the M4 Pro has run it so far.
+- `engine/` is built on Splash 1.3.0 and its affine 4-bit path, which upstream
+  has since removed; the port is the version to use with current Splash.
+- Only the dense Qwen3.8-27B path splits its projections; other models keep
+  upstream behavior.
+- In `engine/`, the projection splits allocate about 0.5 GB on first use,
+  outside Splash's startup memory plan, and the FFN's circuit breaker stays off
+  while they are enabled. The port plans that memory and gives every kind its
+  own breaker.
 
 ## Planned evaluation
 
@@ -207,13 +227,6 @@ drawn by [`docs/make_charts.py`](docs/make_charts.py) from the numbers above.
 
 ## Future work
 
-- **Calibrate the projection splits at startup.** Splash already times the FFN
-  on both processors when it starts and picks the share where they finish
-  together. The projections could do the same: time each kind once on the GPU
-  and the ANE, solve for the balanced split in whole tiles, and build the ANE
-  program once. That replaces the M4 Pro constants on any Mac, and a
-  calibration that covers the projections would let the FFN's circuit breaker
-  run again.
 - **Adapt the split while serving.** Thermal throttling or another app using
   the ANE moves the balance during a session. The handoff already records how
   long each side waits for the other; a controller could switch between a few
