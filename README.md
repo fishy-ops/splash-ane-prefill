@@ -12,7 +12,8 @@ open-source inference engine for Apple Silicon that already ran the feed-forward
 layers on the Neural Engine. It lives in [`engine/`](engine), branch
 `ane-prefill`: three commits on top of Splash 1.3.0, which it makes 1.55-1.72x
 faster with the same output. A [port to current Splash](#ported-to-current-splash)
-calibrates the split on each Mac.
+calibrates the split on each Mac and is 1.53-1.62x faster than upstream main at
+14K and 32K tokens.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/charts/engines-dark.svg">
@@ -120,13 +121,29 @@ the FFN, picks each kind's share or keeps it on the GPU, and remembers the
 result. Each kind has its own circuit breaker, and the startup memory plan
 covers the projections.
 
-Same M4 Pro, uncached time to first token, median of 3 runs:
+The last layer also computes only the prompt's final 256 rows after storing
+every row's K/V, since only the last row's logits are read. Greedy output is
+byte-identical with and without it.
 
-| | 6,144 tokens | 30,000 tokens |
+Same M4 Pro, at the prompt sizes upstream reports (14K and 32K), uncached time
+to first token, median of 3 runs (GPU alone: 1 run):
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/charts/port-dark.svg">
+  <img alt="At 14,096 tokens: GPU alone 137 tok/s (103.2 s), upstream main's FFN split 241 tok/s (58.6 s), this port 389 tok/s (36.3 s). At 32,768 tokens: 128 (256.5 s), 213 (153.7 s) and 325 tok/s (100.8 s)" src="docs/charts/port-light.svg">
+</picture>
+
+| | 14,096 tokens | 32,768 tokens |
 |---|---|---|
-| GPU alone | 44.1 s | 237.1 s |
-| FFN split (upstream main) | 23.9 s | 138.6 s |
-| + projections, calibrated (shares 0.75-0.80) | **14.6 s** | **93.0 s** |
+| GPU alone | 103.2 s | 256.5 s |
+| FFN split (upstream main) | 58.6 s | 153.7 s |
+| + projections, calibrated (shares 0.72-0.80) | **36.3 s** (1.62x) | **100.8 s** (1.53x) |
+
+At this README's own sizes, before the last-layer change, the port took 14.6 s
+at 6,144 tokens and 93.0 s at 30,000. Upstream's ABBA regression check against
+main passes: decode steps, short prefills, draft acceptance, context (256K)
+and weights are unchanged. The first start's calibration takes 44.5 s instead
+of 27.4 s, and later starts set up the split in about 7 s instead of 2 s.
 
 ## What did not work
 

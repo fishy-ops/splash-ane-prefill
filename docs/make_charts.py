@@ -26,6 +26,11 @@ PROMPT = {
     "30,000-token prompt": [(107.6, 107.6, 107.7, 278.8), (120.1, 120.0, 120.1, 249.8),
                             (209.8, 209.7, 209.8, 143.0), (325.3, 321.1, 328.2, 92.3)],
 }
+# The port to current Splash at upstream's prompt sizes: uncached time to first
+# token in seconds (median of 3; GPU alone, one run), as tokens per second.
+PORT_ROWS = ["GPU alone", "FFN split (upstream main)", "This port"]
+PORT = {"14,096-token prompt": (14096, [103.17, 58.57, 36.26]),
+        "32,768-token prompt": (32768, [256.49, 153.67, 100.76])}
 # Throughput of one large matmul, trillion operations per second.
 THROUGHPUT = [
     ("ANE, int8 weights x int8 activations", 20.7, "ane"),
@@ -96,6 +101,24 @@ def engines_chart(t):
         body += rule(label_width, top + 22, label_width, top + 26 + len(ENGINES) * row, t)
         top += 34 + len(ENGINES) * row
     return svg(width, top, body, "Prompt reading speed and time to first token, four engines, 6K and 30K prompts")
+
+
+def port_chart(t):
+    width, label_width, row = 720, 180, 30
+    scale = (width - label_width - 150) / 400
+    body, top = "", 0
+    for title, (tokens, seconds) in PORT.items():
+        body += text(0, top + 14, title, t["text"], 13, weight=600)
+        for index, (name, ttft) in enumerate(zip(PORT_ROWS, seconds)):
+            y, rate, ours = top + 26 + index * row, tokens / ttft, name == "This port"
+            body += text(label_width - 10, y + 15, name, t["text"] if ours else t["muted"], 12, "end",
+                         600 if ours else 400)
+            body += bar(label_width, y, rate * scale, row - 8, t["gpu"] if ours else t["base"])
+            body += text(label_width + rate * scale + 8, y + 15, f"{rate:.0f} tok/s · {ttft:.1f} s",
+                         t["text"], 12, weight=600 if ours else 400)
+        body += rule(label_width, top + 22, label_width, top + 26 + len(PORT_ROWS) * row, t)
+        top += 34 + len(PORT_ROWS) * row
+    return svg(width, top, body, "The port against upstream main and the GPU alone, 14K and 32K prompts")
 
 
 def layer_chart(t):
@@ -173,7 +196,7 @@ def attention_chart(t):
 
 def main():
     OUT.mkdir(exist_ok=True)
-    charts = {"engines": engines_chart, "layer": layer_chart, "throughput": throughput_chart,
+    charts = {"engines": engines_chart, "port": port_chart, "layer": layer_chart, "throughput": throughput_chart,
               "decode": decode_chart, "attention-experiment": attention_chart}
     for name, draw in charts.items():
         for mode, theme in THEMES.items():
